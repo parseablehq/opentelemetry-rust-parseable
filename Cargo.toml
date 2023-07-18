@@ -10,15 +10,15 @@ opentelemetry = { version = "0.18.0", features = ["rt-tokio", "metrics"] }
 opentelemetry-http = "0.8.0"
 opentelemetry-semantic-conventions = { version = "0.10.0" }
 http = "0.2.9"
-reqwest = {version = "0.11.18", features = ["json"] }
+reqwest = { version = "0.11.18", features = ["json"] }
 itertools = "0.10.5"
 futures-core = "0.3"
 base64 = "0.21.2"
-serde = {version = "1.0.163", features = ["derive"] }
+serde = { version = "1.0.163", features = ["derive"] }
 serde_json = "1.0.96"
 whoami = "1.4.0"
 tracing-subscriber = { version = "0.3.16", features = ["json", "env-filter"] }
 tracing = "0.1.37"
 tracing-opentelemetry = "0.18.0"
-tokio = { sversion = "1.28.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
 chrono = "0.4.26"
