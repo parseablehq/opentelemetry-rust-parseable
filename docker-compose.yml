@@ -1,0 +1,19 @@
+version: '3.3'
+services:
+  parseable:
+    user: root
+    container_name: parseable
+    ports:
+        - '8000:8000'
+    volumes:
+        - '/tmp/parseable/data:/parseable/data'
+        - '/tmp/parseable/staging:/parseable/staging'
+    environment:
+        - P_SEND_ANONYMOUS_USAGE_DATA=false
+        - P_FS_DIR=/parseable/data
+        - P_ADDR=0.0.0.0:8000
+        - P_USERNAME=admin
+        - P_PASSWORD=admin
+        - P_STAGING_DIR=/parseable/staging
+    image: parseable/parseable:v0.5.0
+    command: parseable local-store
