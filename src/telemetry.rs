@@ -8,28 +8,6 @@ use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, EnvFilter};
 
 use crate::ParseableExporterBuilder;
 
-pub fn get_batch_config() -> trace::BatchConfig {
-    trace::BatchConfig::default()
-        .with_max_queue_size(
-            env::var("OTLP_QUEUE_SIZE")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(100000),
-        )
-        .with_max_export_batch_size(
-            env::var("OTLP_BATCH_SIZE")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(8192),
-        )
-        .with_scheduled_delay(Duration::from_millis(
-            env::var("OTLP_INTERVAL_MILLIS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(1000),
-        ))
-}
-
 fn get_resources(service: &str) -> Resource {
     let kvs = [
         KeyValue::new(
@@ -147,7 +125,7 @@ mod telemetry_test {
             "value": 42
         });
 
-        info!(message="This is a test message", developer="giovanni@liquidanalytics.com", intent="unit_test", intent_key="unit_test_key", data=%test);
+        info!(message="This is a test message", developer="giovanni", intent="unit_test", intent_key="unit_test_key", data=%test);
     }
 
     #[instrument]
@@ -162,11 +140,11 @@ mod telemetry_test {
         //println!("Name: {name}");
         crate::telemetry::telemetry_startup().await;
 
-        //fooz().await;
+        fooz().await;
         println!("Test");
         outside_test().await;
         fooz().await;
 
-        // telemetry_shutdown().await;
+        crate::telemetry::telemetry_shutdown().await;
     }
 }

@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use tokio::time::sleep;
 use opentelemetry_parseable::telemetry;
-use tracing::{Level, info, event, instrument};
+use tokio::time::sleep;
+use tracing::{event, info, instrument, Level};
 
 #[tokio::main]
 async fn main() {
@@ -13,7 +13,7 @@ async fn main() {
     info!("This is a test message");
 
     event!(Level::INFO, "This is a span");
-    //telemetry::telemetry_shutdown().await;
+    telemetry::telemetry_shutdown().await;
 }
 
 #[instrument]
