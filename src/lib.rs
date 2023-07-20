@@ -18,19 +18,18 @@ use serde::Serialize;
 use std::{
     env,
     fmt::Debug,
+    sync::Arc,
     time::{Duration, SystemTime},
 };
 
-pub mod telemetry;
-
 /// Get configuration options for batch exporter
-pub fn get_batch_config() -> BatchConfig {
+fn get_batch_config() -> BatchConfig {
     BatchConfig::default()
         .with_max_queue_size(
             env::var("OTLP_QUEUE_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(100000),
+                .unwrap_or(65536),
         )
         .with_max_export_batch_size(
             env::var("OTLP_BATCH_SIZE")
@@ -64,7 +63,7 @@ struct TraceMessage {
 
 #[derive(Debug)]
 pub struct ParseableExporter {
-    client: reqwest::Client,
+    client: Arc<reqwest::Client>,
     request_url: Url,
     request_headers: HeaderMap,
 }
@@ -76,7 +75,7 @@ impl ParseableExporter {
         request_headers: HeaderMap,
     ) -> Self {
         ParseableExporter {
-            client,
+            client: Arc::new(client),
             request_url,
             request_headers,
         }
@@ -276,12 +275,25 @@ impl Default for ParseableExporterBuilder {
 impl export::trace::SpanExporter for ParseableExporter {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, export::trace::ExportResult> {
         let traces = into_trace_messages(batch);
-        Box::pin(send_request(
-            self.client.clone(),
-            self.request_url.clone(),
-            self.request_headers.clone(),
-            traces,
-        ))
+        let req = self
+            .client
+            .request(Method::POST, self.request_url.clone())
+            .headers(self.request_headers.clone())
+            .json(&traces)
+            .build()
+            .map_err(|e| TraceError::Other(Box::new(e)));
+
+        let client = self.client.clone();
+
+        Box::pin({
+            async move {
+                client
+                    .execute(req?)
+                    .await
+                    .map_err(|e| TraceError::Other(Box::new(e)))?;
+                Ok(())
+            }
+        })
     }
 }
 
@@ -311,7 +323,7 @@ fn into_trace_messages(spans: Vec<SpanData>) -> Vec<TraceMessage> {
             trace_messages.extend(span.events.into_iter().map(|event| {
                 let mut trace_message = trace_message.clone();
                 trace_message.attributes.extend(extract_attributes(
-                    event.attributes.iter().map(|kv| (&kv.key, &kv.value)),
+                    event.attributes.iter().map(|kv| (&kv.key, dbg!(&kv.value))),
                 ));
                 trace_message.event_message = Some(event.name.to_string());
                 trace_message.event_timestamp = Some(to_timestamp_string(event.timestamp));
@@ -331,23 +343,4 @@ fn extract_attributes<'a>(attributes: impl Iterator<Item = (&'a Key, &'a Value)>
     attributes
         .map(|(key, value)| format!("{}={}", key, value))
         .collect()
-}
-
-async fn send_request<T: Serialize + Debug>(
-    client: reqwest::Client,
-    url: Url,
-    headers: HeaderMap,
-    data: T,
-) -> export::trace::ExportResult {
-    let req = client
-        .request(Method::POST, url)
-        .headers(headers.clone())
-        .json(&data)
-        .build()
-        .map_err(|e| TraceError::Other(Box::new(e)))?;
-    client
-        .execute(req)
-        .await
-        .map_err(|e| TraceError::Other(Box::new(e)))?;
-    Ok(())
 }
