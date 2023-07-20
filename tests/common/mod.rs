@@ -6,7 +6,7 @@ use tokio::time::{sleep, Duration};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, EnvFilter};
 
-use crate::ParseableExporterBuilder;
+use opentelemetry_parseable::ParseableExporterBuilder;
 
 fn get_resources(service: &str) -> Resource {
     let kvs = [
@@ -90,61 +90,4 @@ pub async fn telemetry_startup() {
 #[inline]
 pub async fn telemetry_shutdown() {
     sleep(Duration::from_secs(2)).await;
-}
-
-mod telemetry_test {
-
-    use tokio::time::{sleep, Duration};
-    use tracing::*;
-
-    #[instrument]
-    async fn bar() {
-        sleep(Duration::from_secs(5)).await;
-    }
-
-    #[instrument]
-    async fn fooz() {
-        println!("Testing Spans?");
-        bar().await;
-
-        event!(Level::INFO, "midpoint");
-
-        bar().await;
-
-        error!("1");
-        warn!("2");
-        info!("3");
-        debug!("4");
-        trace!("5");
-    }
-
-    #[instrument]
-    async fn inside_test() {
-        let test = serde_json::json!({
-            "name": "test object",
-            "value": 42
-        });
-
-        info!(message="This is a test message", developer="giovanni", intent="unit_test", intent_key="unit_test_key", data=%test);
-    }
-
-    #[instrument]
-    async fn outside_test() {
-        let _idea = "bright";
-        inside_test().await
-    }
-
-    #[tokio::test]
-    #[instrument]
-    async fn run() {
-        //println!("Name: {name}");
-        crate::telemetry::telemetry_startup().await;
-
-        fooz().await;
-        println!("Test");
-        outside_test().await;
-        fooz().await;
-
-        crate::telemetry::telemetry_shutdown().await;
-    }
 }
