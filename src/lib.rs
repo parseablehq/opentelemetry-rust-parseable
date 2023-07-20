@@ -186,6 +186,24 @@ impl ParseableExporterBuilder {
         Ok(tracer)
     }
 
+    pub fn install_simple<R: TraceRuntime>(
+        self,
+        config: sdk::trace::Config,
+    ) -> Result<sdk::trace::Tracer, TraceError> {
+        let exporter = self.build_exporter()?;
+        let provider_builder = sdk::trace::TracerProvider::builder()
+            .with_simple_exporter(exporter)
+            .with_config(config);
+        let provider = provider_builder.build();
+        let tracer = provider.versioned_tracer(
+            "opentelemetry-parseable",
+            Some(env!("CARGO_PKG_VERSION")),
+            None,
+        );
+        let _ = global::set_tracer_provider(provider);
+        Ok(tracer)
+    }
+
     fn _build_endpoint(&self) -> Result<Url, TraceError> {
         let http_protocol = if self.tls_enabled { "https" } else { "http" };
         let url = format!(
